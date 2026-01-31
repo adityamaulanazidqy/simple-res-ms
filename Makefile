@@ -12,6 +12,11 @@ run-all:
 	$(MAKE) run-order & \
 	$(MAKE) run-product
 
+run-all-terms:
+	gnome-terminal --title="Auth Service" -- bash -c "cd services/authentication-service && go run main.go; exec bash" & \
+	gnome-terminal --title="Order Service" -- bash -c "cd services/order-service && go run main.go; exec bash" & \
+	gnome-terminal --title="Product Service" -- bash -c "cd services/product-service && go run main.go; exec bash"
+
 dev-docker-compose:
 	sudo docker-compose -f docker-compose.dev.yml up --build
 

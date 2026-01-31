@@ -23,17 +23,20 @@ func TestCreateOrderUserNotFound(t *testing.T) {
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		t.Errorf("Error marshaling request body: %v", err)
+		return
 	}
 
 	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/order", baseURL), bytes.NewBuffer(bodyJSON))
 	if err != nil {
 		t.Errorf("Error creating request: %v", err)
+		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Error making request: %v", err)
+		return
 	}
 	defer response.Body.Close()
 
@@ -41,7 +44,11 @@ func TestCreateOrderUserNotFound(t *testing.T) {
 		t.Errorf("Expected status code %d, but got %d", http.StatusNotFound, response.StatusCode)
 	}
 
-	bodyBytes, _ := io.ReadAll(response.Body)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+		return
+	}
 
 	t.Logf("Response status code: %d", response.StatusCode)
 	t.Logf("Response body: %s", string(bodyBytes))
@@ -50,25 +57,28 @@ func TestCreateOrderUserNotFound(t *testing.T) {
 func TestCreateOrderSuccess(t *testing.T) {
 	body := model.OrderRequest{
 		UserID:     1,
-		ProductID:  1,
+		ProductID:  2,
 		Quantity:   2,
-		TotalPrice: 50.0,
+		TotalPrice: 25.0,
 	}
 
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		t.Errorf("Error marshaling request body: %v", err)
+		return
 	}
 
 	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/order", baseURL), bytes.NewBuffer(bodyJSON))
 	if err != nil {
 		t.Errorf("Error creating request: %v", err)
+		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Error making request: %v", err)
+		return
 	}
 	defer response.Body.Close()
 
@@ -76,7 +86,11 @@ func TestCreateOrderSuccess(t *testing.T) {
 		t.Errorf("Expected status code %d, but got %d", http.StatusOK, response.StatusCode)
 	}
 
-	bodyBytes, _ := io.ReadAll(response.Body)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+		return
+	}
 
 	t.Logf("Response status code: %d", response.StatusCode)
 	t.Logf("Response body: %s", string(bodyBytes))
@@ -86,12 +100,14 @@ func TestGetOrdersSuccess(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/order", baseURL), nil)
 	if err != nil {
 		t.Errorf("Error creating request: %v", err)
+		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Error making request: %v", err)
+		return
 	}
 	defer response.Body.Close()
 
@@ -99,7 +115,11 @@ func TestGetOrdersSuccess(t *testing.T) {
 		t.Errorf("Expected status code %d or %d, but got %d", http.StatusOK, http.StatusNoContent, response.StatusCode)
 	}
 
-	bodyBytes, _ := io.ReadAll(response.Body)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+		return
+	}
 
 	t.Logf("Response status code: %d", response.StatusCode)
 	t.Logf("Response body: %s", string(bodyBytes))
@@ -115,12 +135,14 @@ func TestCreateOrderInvalidData(t *testing.T) {
 	)
 	if err != nil {
 		t.Errorf("Error creating request: %v", err)
+		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Error making request: %v", err)
+		return
 	}
 	defer response.Body.Close()
 
@@ -128,7 +150,11 @@ func TestCreateOrderInvalidData(t *testing.T) {
 		t.Errorf("Expected status code %d, but got %d", http.StatusBadRequest, response.StatusCode)
 	}
 
-	bodyBytes, _ := io.ReadAll(response.Body)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+		return
+	}
 
 	t.Logf("Response status code: %d", response.StatusCode)
 	t.Logf("Response body: %s", string(bodyBytes))
@@ -138,12 +164,14 @@ func TestOrderServiceMethodNotAllowed(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/order", baseURL), nil)
 	if err != nil {
 		t.Errorf("Error creating request: %v", err)
+		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Error making request: %v", err)
+		return
 	}
 	defer response.Body.Close()
 
@@ -151,7 +179,11 @@ func TestOrderServiceMethodNotAllowed(t *testing.T) {
 		t.Errorf("Expected status code %d, but got %d", http.StatusMethodNotAllowed, response.StatusCode)
 	}
 
-	bodyBytes, _ := io.ReadAll(response.Body)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+		return
+	}
 
 	t.Logf("Response status code: %d", response.StatusCode)
 	t.Logf("Response body: %s", string(bodyBytes))

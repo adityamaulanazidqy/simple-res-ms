@@ -6,29 +6,31 @@ import (
 	"net/http"
 	"restaurant/model"
 	"restaurant/storage"
+	"strconv"
 )
 
 func main() {
-	restaurantDB := storage.NewRestaurantDB()
+	userDB := storage.NewUserStorage()
+
+	if userDB.GetUserCount() == 0 {
+		userDB.AddUser(model.User{ID: 1, Username: "admin", Password: "admin123"})
+		userDB.AddUser(model.User{ID: 2, Username: "user1", Password: "password123"})
+	}
 
 	mux := http.ServeMux{}
 	mux.HandleFunc(
 		"/login", func(w http.ResponseWriter, r *http.Request) {
 			var request model.UserLoginRequest
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				log.Printf("Error decoding login request: %v", err)
+				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
 
-			var foundUser *model.User
-			for _, user := range restaurantDB.User {
-				if user.Username == request.Username {
-					foundUser = &user
-					break
-				}
-			}
+			log.Printf("Login attempt for user: %s", request.Username)
 
-			if foundUser == nil {
+			foundUser, exists := userDB.GetUserByUsername(request.Username)
+			if !exists {
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
@@ -53,30 +55,23 @@ func main() {
 		"/register", func(w http.ResponseWriter, r *http.Request) {
 			var request model.UserRegisterRequest
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				log.Printf("Error decoding register request: %v", err)
+				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
 
-			existUser := false
-			for _, user := range restaurantDB.User {
-				if user.Username == request.Username {
-					existUser = true
-					break
-				}
-			}
+			log.Printf("Register attempt for user: %s", request.Username)
 
-			if existUser {
+			if userDB.UserExists(request.Username) {
 				http.Error(w, "User already exists", http.StatusConflict)
 				return
 			}
 
-			restaurantDB.User = append(
-				restaurantDB.User, model.User{
-					ID:       len(restaurantDB.User) + 1,
-					Username: request.Username,
-					Password: request.Password,
-				},
-			)
+			userDB.AddUser(model.User{
+				ID:       userDB.GetUserCount() + 1,
+				Username: request.Username,
+				Password: request.Password,
+			})
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -88,9 +83,54 @@ func main() {
 		},
 	)
 
-	if err := http.ListenAndServe(":8081", &mux); err != nil {
-		panic(err)
-	}
+	mux.HandleFunc(
+		"/users", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 
-	log.Println("Server started at :8080")
+			if userDB.GetUserCount() == 0 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNoContent)
+				json.NewEncoder(w).Encode(map[string]string{"message": "no users found"})
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(userDB.Users)
+		},
+	)
+
+	mux.HandleFunc(
+		"/users/", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+
+			strID := r.URL.Path[len("/users/"):]
+			id, err := strconv.Atoi(strID)
+			if err != nil {
+				http.Error(w, "Invalid user ID", http.StatusBadRequest)
+				return
+			}
+
+			foundUser, exists := userDB.GetUserByID(id)
+			if !exists {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"message": "user found", "username": foundUser.Username})
+		},
+	)
+
+	log.Println("Authentication service starting on :8081")
+	if err := http.ListenAndServe(":8081", &mux); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }

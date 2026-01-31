@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"restaurant/model"
 	"restaurant/storage"
@@ -10,7 +11,13 @@ import (
 )
 
 func main() {
-	restaurantDB := storage.NewRestaurantDB()
+	productDB := storage.NewProductStorage()
+
+	if productDB.GetProductCount() == 0 {
+		productDB.AddProduct(model.Product{ID: 1, Name: "Burger", Description: "Delicious beef burger", Price: 15.99})
+		productDB.AddProduct(model.Product{ID: 2, Name: "Pizza", Description: "Margherita pizza", Price: 12.50})
+		productDB.AddProduct(model.Product{ID: 3, Name: "Salad", Description: "Fresh garden salad", Price: 8.99})
+	}
 
 	mux := http.NewServeMux()
 
@@ -19,12 +26,15 @@ func main() {
 			if r.Method == http.MethodPost {
 				var product model.Product
 				if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
+					log.Printf("Error decoding product: %v", err)
+					http.Error(w, "Invalid request body", http.StatusBadRequest)
 					return
 				}
 
-				product.ID = len(restaurantDB.Product) + 1
-				restaurantDB.Product = append(restaurantDB.Product, product)
+				log.Printf("Creating product: %s", product.Name)
+
+				product.ID = productDB.GetProductCount() + 1
+				productDB.AddProduct(product)
 
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(
@@ -34,19 +44,19 @@ func main() {
 					},
 				)
 			} else if r.Method == http.MethodGet {
-				if len(restaurantDB.Product) == 0 {
+				if len(productDB.Products) == 0 {
 					w.WriteHeader(http.StatusNoContent)
 					json.NewEncoder(w).Encode(map[string]string{"message": "no products found"})
 					return
 				}
 
-				for _, product := range restaurantDB.Product {
+				for _, product := range productDB.Products {
 					fmt.Println("ID\tNAME\tDESCRIPTION\tPRICE")
 					fmt.Printf("%d\t%s\t%s\t%.2f\n", product.ID, product.Name, product.Description, product.Price)
 				}
 
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(restaurantDB.Product)
+				json.NewEncoder(w).Encode(productDB.Products)
 			} else {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
@@ -65,15 +75,8 @@ func main() {
 
 			switch r.Method {
 			case http.MethodGet:
-				var foundProduct *model.Product
-				for i := range restaurantDB.Product {
-					if restaurantDB.Product[i].ID == id {
-						foundProduct = &restaurantDB.Product[i]
-						break
-					}
-				}
-
-				if foundProduct == nil {
+				foundProduct, exists := productDB.GetProductByID(id)
+				if !exists {
 					http.Error(w, "Product not found", http.StatusNotFound)
 					return
 				}
@@ -84,25 +87,17 @@ func main() {
 			case http.MethodPut:
 				var updatedProduct model.Product
 				if err := json.NewDecoder(r.Body).Decode(&updatedProduct); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
+					log.Printf("Error decoding update product: %v", err)
+					http.Error(w, "Invalid request body", http.StatusBadRequest)
 					return
 				}
 
-				productIndex := -1
-				for i := range restaurantDB.Product {
-					if restaurantDB.Product[i].ID == id {
-						productIndex = i
-						break
-					}
-				}
+				log.Printf("Updating product ID: %d", id)
 
-				if productIndex == -1 {
+				if !productDB.UpdateProduct(id, updatedProduct) {
 					http.Error(w, "Product not found", http.StatusNotFound)
 					return
 				}
-
-				updatedProduct.ID = id
-				restaurantDB.Product[productIndex] = updatedProduct
 
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(
@@ -113,23 +108,10 @@ func main() {
 				)
 
 			case http.MethodDelete:
-				productIndex := -1
-				for i := range restaurantDB.Product {
-					if restaurantDB.Product[i].ID == id {
-						productIndex = i
-						break
-					}
-				}
-
-				if productIndex == -1 {
+				if !productDB.DeleteProduct(id) {
 					http.Error(w, "Product not found", http.StatusNotFound)
 					return
 				}
-
-				restaurantDB.Product = append(
-					restaurantDB.Product[:productIndex],
-					restaurantDB.Product[productIndex+1:]...,
-				)
 
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(map[string]string{"message": "product deleted successfully"})

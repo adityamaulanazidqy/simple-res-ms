@@ -13,12 +13,12 @@ This repository contains a complete restaurant management system built using mic
    - JWT-based authentication (planned)
    - User management endpoints
 
-2. **Order Service** (Port 8082)  
+2. **Order Service** (Port 8080)  
    - Order creation and management
    - User-order relationship handling
    - Order status tracking
 
-3. **Product Service** (Port 8083)
+3. **Product Service** (Port 8082)
    - Full CRUD operations for products
    - Product catalog management
    - Price and inventory tracking
@@ -73,15 +73,17 @@ cd services/product-service && go run main.go
 
 ## Service Endpoints
 
-### Authentication Service
+### Authentication Service (Port 8081)
 - `POST /register` - Register new user
 - `POST /login` - User authentication
+- `GET /users` - Get all users
+- `GET /users/{id}` - Get user by ID
 
-### Order Service
+### Order Service (Port 8080)
 - `POST /order` - Create new order
 - `GET /order` - Retrieve all orders
 
-### Product Service
+### Product Service (Port 8082)
 - `POST /product` - Create new product
 - `GET /product` - Get all products
 - `GET /product/{id}` - Get product by ID
@@ -110,7 +112,9 @@ restaurant/
 │       ├── product_test.go
 │       └── Dockerfile
 ├── storage/                  # Shared storage layer
-│   └── restaurant_db.go
+│   ├── user_storage.go
+│   ├── product_storage.go
+│   └── order_storage.go
 ├── docker-compose.yml        # Production deployment
 ├── docker-compose.dev.yml    # Development setup
 └── go.mod                   # Go module configuration
